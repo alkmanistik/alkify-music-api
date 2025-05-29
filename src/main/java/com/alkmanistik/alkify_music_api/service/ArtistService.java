@@ -38,9 +38,11 @@ public class ArtistService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "artist.all", allEntries = true),
-            @CacheEvict(value = "artist.byId", key = "#result.id"),
-            @CacheEvict(value = "artist.byUserId", key = "#userId")
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#result.id", condition = "#result != null"),
+            @CacheEvict(value = "artists.byUserId", key = "#userId"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "artist.subscriptions", key = "#userId")
     })
     public ArtistDTO createArtist(Long userId, ArtistRequest artistRequest, MultipartFile file) throws IOException {
         User user = userRepository.findById(userId)
@@ -70,8 +72,8 @@ public class ArtistService {
         return globalMapper.toArtistDTO(savedArtist);
     }
 
-    @Cacheable(value = "artist.byUserId", key="#userId",
-        unless = "#result == null")
+    @Cacheable(value = "artists.byUserId", key = "#userId",
+            unless = "#result == null", sync = true)
     public List<ArtistDTO> getUserArtists(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new EntityNotFoundException("User not found");
@@ -81,28 +83,30 @@ public class ArtistService {
                 .toList();
     }
 
-    @Cacheable(value = "artist.all",
-            unless = "#result == null")
+    @Cacheable(value = "artists.all",
+            unless = "#result == null", sync = true)
     public List<ArtistDTO> getAllArtists() {
-        var artists = artistRepository.findAll();
-        return artists.stream()
+        return artistRepository.findAll().stream()
                 .map(globalMapper::toArtistDTO)
                 .toList();
     }
 
-    @Cacheable(value = "artist.byId", key="#id",
-            unless = "#result == null")
+    @Cacheable(value = "artist.byId", key = "#id",
+            unless = "#result == null", sync = true)
     public ArtistDTO getArtistById(Long id) {
-        var artist = artistRepository.findById(id)
+        return artistRepository.findById(id)
+                .map(globalMapper::toArtistDTO)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
-        return globalMapper.toArtistDTO(artist);
     }
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "artist.all", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
             @CacheEvict(value = "artist.byId", key = "#id"),
-            @CacheEvict(value = "artist.byUserId", allEntries = true)
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "artist.subscriptions", allEntries = true),
+            @CacheEvict(value = "artist.subscribers", key = "#id")
     })
     public void deleteArtist(Long id) {
         Artist artist = artistRepository.findById(id)
@@ -120,9 +124,10 @@ public class ArtistService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "artist.all", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
             @CacheEvict(value = "artist.byId", key = "#id"),
-            @CacheEvict(value = "artist.byUserId", allEntries = true)
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true)
     })
     public ArtistDTO updateArtistById(Long id, ArtistRequest artistRequest, MultipartFile file) throws IOException {
         var artistForUpdate = artistRepository.findById(id)
@@ -130,7 +135,7 @@ public class ArtistService {
         if (artistRequest.getArtistName() != null) {
             artistForUpdate.setArtistName(artistRequest.getArtistName());
         }
-        artistRequest.setDescription(artistRequest.getDescription());
+        artistForUpdate.setDescription(artistRequest.getDescription());
         if (file != null && !file.isEmpty()) {
             String newFileName = fileService.uploadFile(imagePath, file);
             artistForUpdate.setImageFilePath(newFileName);
@@ -139,10 +144,10 @@ public class ArtistService {
         return globalMapper.toArtistDTO(updatedArtist);
     }
 
-    @Cacheable(value = "artist.search", key = "#name")
+    @Cacheable(value = "artist.search", key = "#name",
+            unless = "#result == null", sync = true)
     public List<ArtistDTO> searchArtistsByName(String name) {
-        var artists = artistRepository.findByArtistNameContainingIgnoreCase(name);
-        return artists.stream()
+        return artistRepository.findByArtistNameContainingIgnoreCase(name).stream()
                 .map(globalMapper::toArtistDTO)
                 .toList();
     }
@@ -156,9 +161,9 @@ public class ArtistService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "artist.all", allEntries = true),
-            @CacheEvict(value = "artist.byId", key = "#id"),
-            @CacheEvict(value = "artist.byUserId", allEntries = true)
+            @CacheEvict(value = "artist.subscribers", key = "#artistId"),
+            @CacheEvict(value = "artist.subscriptions", key = "#userId"),
+            @CacheEvict(value = "artist.byId", key = "#artistId")
     })
     public void subscribeToArtist(Long userId, Long artistId) {
         User user = userRepository.findById(userId)
@@ -176,8 +181,12 @@ public class ArtistService {
         }
     }
 
-    // Удаляем подписку пользователя на артиста
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "artist.subscribers", key = "#artistId"),
+            @CacheEvict(value = "artist.subscriptions", key = "#userId"),
+            @CacheEvict(value = "artist.byId", key = "#artistId")
+    })
     public void unsubscribeFromArtist(Long userId, Long artistId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -194,14 +203,19 @@ public class ArtistService {
         }
     }
 
+    @Cacheable(value = "artist.subscribed", key = "{#userId, #artistId}",
+            unless = "#result == false")
     public boolean isUserSubscribed(Long userId, Long artistId) {
         return artistRepository.existsByIdAndSubscribersId(artistId, userId);
     }
 
+    @Cacheable(value = "artist.subscribers.count", key = "#artistId")
     public int getSubscriberCount(Long artistId) {
         return artistRepository.countSubscribersById(artistId);
     }
 
+    @Cacheable(value = "artist.subscribers", key = "#artistId",
+            unless = "#result == null || #result.isEmpty()")
     public List<UserDTO> getArtistSubscribers(Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
@@ -211,6 +225,8 @@ public class ArtistService {
                 .toList();
     }
 
+    @Cacheable(value = "artist.subscriptions", key = "#userId",
+            unless = "#result == null")
     public List<ArtistDTO> getUserSubscriptions(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -219,6 +235,4 @@ public class ArtistService {
                 .map(globalMapper::toArtistDTO)
                 .toList();
     }
-
-
 }
