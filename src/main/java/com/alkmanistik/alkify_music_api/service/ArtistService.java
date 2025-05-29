@@ -154,9 +154,8 @@ public class ArtistService {
 
     @Transactional
     public void deleteAllArtistsByUser(Long userId) {
-        artistRepository.findByUserId(userId).forEach(artist -> {
-            deleteArtist(artist.getId());
-        });
+        artistRepository.findByUserId(userId).forEach(artist ->
+            deleteArtist(artist.getId()));
     }
 
     @Transactional

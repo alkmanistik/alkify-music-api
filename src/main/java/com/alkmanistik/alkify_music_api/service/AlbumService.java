@@ -12,6 +12,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,6 +36,12 @@ public class AlbumService {
     private String imagePath;
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#result.id", condition = "#result != null"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
     public AlbumDTO createAlbum(Long artistId, AlbumRequest albumRequest, MultipartFile file) throws IOException {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> {
@@ -61,13 +70,14 @@ public class AlbumService {
         return globalMapper.toAlbumDTO(savedAlbum);
     }
 
+    @Cacheable(value = "albums.all", sync = true)
     public List<AlbumDTO> getAllAlbums() {
-        var albums = albumRepository.findAll();
-        return albums.stream()
+        return albumRepository.findAll().stream()
                 .map(globalMapper::toAlbumDTO)
                 .toList();
     }
 
+    @Cacheable(value = "albums.byArtist", key = "#artistId", sync = true)
     public List<AlbumDTO> getAlbumsByArtistId(Long artistId) {
         if (!artistRepository.existsById(artistId)) {
             throw new EntityNotFoundException("Artist not found with id: " + artistId);
@@ -78,13 +88,20 @@ public class AlbumService {
                 .toList();
     }
 
+    @Cacheable(value = "album.byId", key = "#id", sync = true)
     public AlbumDTO getAlbumById(Long id) {
-        Album album = albumRepository.findById(id)
+        return albumRepository.findById(id)
+                .map(globalMapper::toAlbumDTO)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found with id: " + id));
-        return globalMapper.toAlbumDTO(album);
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#id"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
     public AlbumDTO updateAlbum(Long id, AlbumRequest albumRequest, MultipartFile file) throws IOException {
         Album album = albumRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
@@ -108,6 +125,12 @@ public class AlbumService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#album_id"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
     public void deleteAlbum(Long album_id) {
         Album album = albumRepository.findById(album_id)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
@@ -123,6 +146,12 @@ public class AlbumService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#albumId"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
     public AlbumDTO addArtistToAlbum(Long albumId, Long artistId) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
@@ -140,7 +169,13 @@ public class AlbumService {
     }
 
     @Transactional
-    public AlbumDTO removeArtistFromAlbum(Long albumId, Long artistId) {
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#albumId"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
+    public void removeArtistFromAlbum(Long albumId, Long artistId) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
 
@@ -152,10 +187,10 @@ public class AlbumService {
         }
 
         album.getArtists().remove(artist);
-        Album updatedAlbum = albumRepository.save(album);
-        return globalMapper.toAlbumDTO(updatedAlbum);
+        albumRepository.save(album);
     }
 
+    @Cacheable(value = "albums.search", key = "#title", sync = true)
     public List<AlbumDTO> searchAlbums(String title) {
         if (title == null || title.isBlank()) {
             return getAllAlbums();
@@ -167,10 +202,13 @@ public class AlbumService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
     public void deleteAlbumsByArtist(Long artistId) {
-        albumRepository.findByArtistsId(artistId).forEach(album -> {
-            deleteAlbum(album.getId());
-        });
+        albumRepository.findByArtistsId(artistId).forEach(album ->
+                deleteAlbum(album.getId()));
     }
-
 }
