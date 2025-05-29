@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    url: ${DB_URL}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  application:
+    name: alkify-music-api
+  data:
+    redis:
+      host: localhost
+      port: 6379
+project:
+  images: images/
+  audios: audios/
