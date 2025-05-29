@@ -16,6 +16,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,21 +42,28 @@ public class TrackService {
     @Value("${project.audios}")
     private String audioPath;
 
+    @Cacheable(value = "tracks.all", sync = true)
     public List<TrackDTO> getAllTracks() {
-        var tracks = trackRepository.findAll();
-        return tracks.stream()
+        return trackRepository.findAll().stream()
                 .map(globalMapper::toTrackDTO)
                 .toList();
     }
 
+    @Cacheable(value = "track.byId", key = "#id", sync = true)
     public TrackDTO getById(Long id) {
-        Track track = trackRepository.findById(id)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Track not found with id: " + id));
-        return globalMapper.toTrackDTO(track);
+        return trackRepository.findById(id)
+                .map(globalMapper::toTrackDTO)
+                .orElseThrow(() -> new EntityNotFoundException("Track not found with id: " + id));
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "track.byId", key = "#result.id", condition = "#result != null"),
+            @CacheEvict(value = "tracks.byAlbum", key = "#albumId"),
+            @CacheEvict(value = "tracks.search", allEntries = true),
+            @CacheEvict(value = "tracks.liked", allEntries = true)
+    })
     public TrackDTO createTrack(Long albumId, TrackRequest trackRequest, MultipartFile file) throws IOException {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found with id: " + albumId));
@@ -75,10 +85,16 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true),
+            @CacheEvict(value = "tracks.search", allEntries = true),
+            @CacheEvict(value = "tracks.liked", allEntries = true)
+    })
     public TrackDTO updateTrack(Long trackId, TrackRequest trackRequest, MultipartFile file) throws IOException {
         Track track = trackRepository.findById(trackId)
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Track not found with id: " + trackId));
+                .orElseThrow(() -> new EntityNotFoundException("Track not found with id: " + trackId));
         if (trackRequest.getTitle() != null) {
             track.setTitle(trackRequest.getTitle());
         }
@@ -96,6 +112,13 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true),
+            @CacheEvict(value = "tracks.search", allEntries = true),
+            @CacheEvict(value = "tracks.liked", allEntries = true)
+    })
     public void deleteTrack(Long trackId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
@@ -109,18 +132,27 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "track.byId", allEntries = true),
+            @CacheEvict(value = "tracks.byAlbum", key = "#albumId"),
+            @CacheEvict(value = "tracks.search", allEntries = true),
+            @CacheEvict(value = "tracks.liked", allEntries = true)
+    })
     public void deleteTracksByAlbum(Long albumId) {
         trackRepository.findAllByAlbumId(albumId).forEach(track ->
                 deleteTrack(track.getId())
         );
     }
 
+    @Cacheable(value = "tracks.byAlbum", key = "#albumId", sync = true)
     public List<TrackDTO> getTracksByAlbumId(Long albumId) {
         return trackRepository.findAllByAlbumId(albumId).stream()
                 .map(globalMapper::toTrackDTO)
                 .toList();
     }
 
+    @Cacheable(value = "tracks.search", key = "#title", sync = true)
     public List<TrackDTO> searchTracks(String title) {
         if (title == null || title.isBlank()) {
             return Collections.emptyList();
@@ -131,6 +163,11 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true)
+    })
     public TrackDTO addArtistToTrack(Long trackId, Long artistId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
@@ -148,6 +185,11 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true)
+    })
     public void removeArtistFromTrack(Long trackId, Long artistId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
@@ -167,6 +209,10 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.liked", key = "#userId")
+    })
     public void likeTrack(Long trackId, Long userId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
@@ -181,6 +227,10 @@ public class TrackService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.liked", key = "#userId")
+    })
     public void unlikeTrack(Long trackId, Long userId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
@@ -196,14 +246,15 @@ public class TrackService {
         }
     }
 
+    @Cacheable(value = "track.likedStatus", key = "{#trackId, #userId}")
     public boolean isTrackLikedByUser(Long trackId, Long userId) {
         return trackRepository.existsByIdAndLikedUsersId(trackId, userId);
     }
 
+    @Cacheable(value = "tracks.liked", key = "#userId", sync = true)
     public List<TrackDTO> getLikedTracks(Long userId) {
         return trackRepository.findByLikedUsersId(userId).stream()
                 .map(globalMapper::toTrackDTO)
                 .toList();
     }
-
 }
