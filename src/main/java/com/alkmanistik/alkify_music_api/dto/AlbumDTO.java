@@ -1,5 +1,6 @@
 package com.alkmanistik.alkify_music_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ public class AlbumDTO {
     private String title;
     private String description;
     private String imageUrl;
+    @JsonIgnore
     private LocalDateTime releaseDate;
     private List<ArtistMinimalDTO> artists;
     private List<TrackMinimalDTO> tracks;

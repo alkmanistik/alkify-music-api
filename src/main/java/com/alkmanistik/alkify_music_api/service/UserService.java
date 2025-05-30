@@ -7,11 +7,15 @@ import com.alkmanistik.alkify_music_api.repository.UserRepository;
 import com.alkmanistik.alkify_music_api.request.UserRequest;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,33 +30,47 @@ public class UserService {
     private final UserRepository userRepository;
     private final GlobalMapper globalMapper;
     private final ArtistService artistService;
-    private final PasswordEncoder passwordEncoder;
+
+//    @Transactional
+//    @Caching(evict = {
+//            @CacheEvict(value = "users.all", allEntries = true),
+//            @CacheEvict(value = "user.byId", key = "#result.id", condition = "#result != null"),
+//            @CacheEvict(value = "user.byEmail", key = "#userRequest.email")})
+//    public UserDTO createUser(UserRequest userRequest) {
+//        if (userRepository.existsByEmail(userRequest.getEmail())) {
+//            throw new IllegalArgumentException("Email already exists");
+//        }
+//        User user = new User();
+//        user.setUsername(userRequest.getUsername());
+//        user.setEmail(userRequest.getEmail());
+//        user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
+//        User savedUser = userRepository.save(user);
+//        log.info("Created user with id: {}", savedUser.getId());
+//
+//        if (userRequest.getManagedArtists() != null) {
+//            userRequest.getManagedArtists().forEach(artistRequest -> {
+//                try {
+//                    artistService.createArtist(savedUser.getId(), artistRequest, null);
+//                } catch (IOException e) {
+//                    throw new RuntimeException("Failed to create artist: " + artistRequest.getArtistName(), e);
+//                }
+//            });
+//        }
+//
+//        return globalMapper.toUserDTO(savedUser);
+//    }
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "users.all", allEntries = true),
             @CacheEvict(value = "user.byId", key = "#result.id", condition = "#result != null"),
-            @CacheEvict(value = "user.byEmail", key = "#userRequest.email")})
-    public UserDTO createUser(UserRequest userRequest) {
-        if (userRepository.existsByEmail(userRequest.getEmail())) {
+            @CacheEvict(value = "user.byEmail", key = "#user.email")})
+    public UserDTO createUser(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
             throw new IllegalArgumentException("Email already exists");
         }
-        User user = new User();
-        user.setUsername(userRequest.getUsername());
-        user.setEmail(userRequest.getEmail());
-        user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
         User savedUser = userRepository.save(user);
         log.info("Created user with id: {}", savedUser.getId());
-
-        if (userRequest.getManagedArtists() != null) {
-            userRequest.getManagedArtists().forEach(artistRequest -> {
-                try {
-                    artistService.createArtist(savedUser.getId(), artistRequest, null);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to create artist: " + artistRequest.getArtistName(), e);
-                }
-            });
-        }
 
         return globalMapper.toUserDTO(savedUser);
     }
@@ -101,9 +119,9 @@ public class UserService {
             userForUpdate.setEmail(userUpdates.getEmail());
         }
 
-        if (userUpdates.getPassword() != null) {
-            userForUpdate.setPassword(passwordEncoder.encode(userUpdates.getPassword()));
-        }
+//        if (userUpdates.getPassword() != null) {
+//            userForUpdate.setPassword(passwordEncoder.encode(userUpdates.getPassword()));
+//        }
 
         User updatedUser = userRepository.save(userForUpdate);
         return globalMapper.toUserDTO(updatedUser);
@@ -123,6 +141,14 @@ public class UserService {
 
         userRepository.delete(user);
         log.info("Deleted user with id: {}", userId);
+    }
+
+    public User getUserEntityByEmail(@Email @NotBlank(message = "Email is mandatory") String email) {
+        return userRepository.findByEmail(email).orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    public UserDetailsService userDetailsService() {
+        return this::getUserEntityByEmail;
     }
 
 }

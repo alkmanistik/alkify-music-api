@@ -18,11 +18,11 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserDTO createUser(@RequestBody @Valid UserRequest user) {
-        return userService.createUser(user);
-    }
+//    @PostMapping
+//    @ResponseStatus(HttpStatus.CREATED)
+//    public UserDTO createUser(@RequestBody @Valid UserRequest user) {
+//        return userService.createUser(user);
+//    }
 
     @GetMapping("/email/{email}")
     public UserDTO getUserByEmail(@PathVariable String email) {

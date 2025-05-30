@@ -1,6 +1,7 @@
 package com.alkmanistik.alkify_music_api.dto;
 
 import com.alkmanistik.alkify_music_api.model.Track;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ public class TrackDTO {
     private String genre;
     private int durationSeconds;
     private String audioUrl;
+    @JsonIgnore
     private LocalDateTime releaseDate;
     private List<ArtistMinimalDTO> artists;
     private AlbumMinimalDTO album;
