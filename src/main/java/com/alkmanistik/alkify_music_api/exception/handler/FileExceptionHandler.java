@@ -23,7 +23,7 @@ public class FileExceptionHandler{
 
     @ExceptionHandler(IOException.class)
     public ResponseEntity<String> handleIOError(Exception ex) {
-        return ResponseEntity.internalServerError().body("File processing error");
+        return ResponseEntity.internalServerError().body("File processing error: " + ex.getMessage());
     }
 
 }

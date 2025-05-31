@@ -7,6 +7,7 @@ import com.alkmanistik.alkify_music_api.model.Track;
 import com.alkmanistik.alkify_music_api.model.User;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +30,10 @@ public class GlobalMapper {
         return Optional.ofNullable(collection)
                 .map(Collection::size)
                 .orElse(0);
+    }
+
+    private int getYearOrNull(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.getYear() : 0;
     }
 
     public UserDTO toUserDTO(User user) {
@@ -74,7 +79,7 @@ public class GlobalMapper {
         dto.setTitle(album.getTitle());
         dto.setDescription(album.getDescription());
         dto.setImageUrl(album.getImageFilePath());
-        dto.setReleaseDate(album.getCreatedAt());
+        dto.setReleaseDate(getYearOrNull(album.getCreatedAt()));
         dto.setArtists(safeMap(album.getArtists(), this::toArtistMinimalDTO));
         dto.setTracks(safeMap(album.getTracks(), this::toTrackMinimalDTO));
         return dto;
@@ -86,7 +91,7 @@ public class GlobalMapper {
         AlbumMinimalDTO dto = new AlbumMinimalDTO();
         dto.setId(album.getId());
         dto.setTitle(album.getTitle());
-        dto.setReleaseDate(album.getCreatedAt());
+        dto.setReleaseDate(getYearOrNull(album.getCreatedAt()));
         dto.setImageUrl(album.getImageFilePath());
         dto.setTrackCount(safeSize(album.getTracks()));
         return dto;
@@ -101,7 +106,7 @@ public class GlobalMapper {
         dto.setGenre(track.getGenre());
         dto.setDurationSeconds(track.getDurationSeconds());
         dto.setAudioUrl(track.getAudioFilePath());
-        dto.setReleaseDate(track.getReleaseDate());
+        dto.setReleaseDate(getYearOrNull(track.getReleaseDate()));
         dto.setArtists(safeMap(track.getArtists(), this::toArtistMinimalDTO));
         dto.setAlbum(toAlbumMinimalDTO(track.getAlbum()));
         dto.setExplicit(track.isExplicit());

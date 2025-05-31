@@ -1,5 +1,6 @@
 package com.alkmanistik.alkify_music_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,8 +14,7 @@ import java.time.LocalDateTime;
 public class AlbumMinimalDTO {
     private Long id;
     private String title;
-    @JsonIgnore
-    private LocalDateTime releaseDate;
+    private int releaseDate;
     private String imageUrl;
     private int trackCount;
 }

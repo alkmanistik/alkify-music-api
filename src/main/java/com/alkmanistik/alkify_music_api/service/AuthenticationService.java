@@ -32,7 +32,7 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
 
-        userService.createUser(user);
+        userService.createUser(user, request.getManagedArtists());
 
         var jwt = jwtService.generateToken(user);
         return new JwtAuthenticationDTO(jwt);

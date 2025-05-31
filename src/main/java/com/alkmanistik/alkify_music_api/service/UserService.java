@@ -4,6 +4,7 @@ import com.alkmanistik.alkify_music_api.dto.UserDTO;
 import com.alkmanistik.alkify_music_api.mapper.GlobalMapper;
 import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.repository.UserRepository;
+import com.alkmanistik.alkify_music_api.request.ArtistRequest;
 import com.alkmanistik.alkify_music_api.request.UserRequest;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -63,14 +65,22 @@ public class UserService {
             @CacheEvict(value = "users.all", allEntries = true),
             @CacheEvict(value = "user.byId", key = "#result.id", condition = "#result != null"),
             @CacheEvict(value = "user.byEmail", key = "#user.email")})
-    public UserDTO createUser(User user) {
+    public void createUser(User user, List<ArtistRequest> managedArtists) {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new IllegalArgumentException("Email already exists");
         }
         User savedUser = userRepository.save(user);
         log.info("Created user with id: {}", savedUser.getId());
 
-        return globalMapper.toUserDTO(savedUser);
+        if (managedArtists != null) {
+            managedArtists.forEach(artistRequest -> {
+                try {
+                    artistService.createArtist(savedUser.getId(), artistRequest, null);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to create artist: " + artistRequest.getArtistName(), e);
+                }
+            });
+        }
     }
 
     @Cacheable(value = "user.byEmail", key = "#email",
