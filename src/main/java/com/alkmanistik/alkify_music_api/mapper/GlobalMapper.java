@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 public class GlobalMapper {
@@ -21,7 +22,7 @@ public class GlobalMapper {
                 .orElseGet(Collections::emptyList)
                 .stream()
                 .map(mapper)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     private int safeSize(Collection<?> collection) {

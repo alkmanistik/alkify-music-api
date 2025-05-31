@@ -14,13 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -96,7 +94,7 @@ public class UserService {
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(globalMapper::toUserDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Transactional

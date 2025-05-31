@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -46,7 +47,7 @@ public class TrackService {
     public List<TrackDTO> getAllTracks() {
         return trackRepository.findAll().stream()
                 .map(globalMapper::toTrackDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "track.byId", key = "#id", sync = true)
@@ -149,7 +150,7 @@ public class TrackService {
     public List<TrackDTO> getTracksByAlbumId(Long albumId) {
         return trackRepository.findAllByAlbumId(albumId).stream()
                 .map(globalMapper::toTrackDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "tracks.search", key = "#title", sync = true)
@@ -159,7 +160,7 @@ public class TrackService {
         }
         return trackRepository.findByTitleContainingIgnoreCase(title).stream()
                 .map(globalMapper::toTrackDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -255,6 +256,6 @@ public class TrackService {
     public List<TrackDTO> getLikedTracks(Long userId) {
         return trackRepository.findByLikedUsersId(userId).stream()
                 .map(globalMapper::toTrackDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 }

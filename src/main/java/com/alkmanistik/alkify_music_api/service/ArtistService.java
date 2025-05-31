@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -80,7 +81,7 @@ public class ArtistService {
         }
         return artistRepository.findByUserId(userId).stream()
                 .map(globalMapper::toArtistDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "artists.all",
@@ -88,7 +89,7 @@ public class ArtistService {
     public List<ArtistDTO> getAllArtists() {
         return artistRepository.findAll().stream()
                 .map(globalMapper::toArtistDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "artist.byId", key = "#id",
@@ -149,7 +150,7 @@ public class ArtistService {
     public List<ArtistDTO> searchArtistsByName(String name) {
         return artistRepository.findByArtistNameContainingIgnoreCase(name).stream()
                 .map(globalMapper::toArtistDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -221,7 +222,7 @@ public class ArtistService {
 
         return artist.getSubscribers().stream()
                 .map(globalMapper::toUserDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Cacheable(value = "artist.subscriptions", key = "#userId",
@@ -232,6 +233,6 @@ public class ArtistService {
 
         return user.getSubscribedArtists().stream()
                 .map(globalMapper::toArtistDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 }
