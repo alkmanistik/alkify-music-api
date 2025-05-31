@@ -4,9 +4,7 @@ import com.alkmanistik.alkify_music_api.model.Artist;
 import com.alkmanistik.alkify_music_api.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
     List<Artist> findByArtistNameContainingIgnoreCase(String name);

@@ -1,7 +1,6 @@
 package com.alkmanistik.alkify_music_api.controller;
 
 import com.alkmanistik.alkify_music_api.dto.UserDTO;
-import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.request.UserRequest;
 import com.alkmanistik.alkify_music_api.service.UserService;
 import jakarta.validation.Valid;
