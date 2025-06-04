@@ -4,10 +4,12 @@ import com.alkmanistik.alkify_music_api.dto.TrackDTO;
 import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.repository.UserRepository;
 import com.alkmanistik.alkify_music_api.request.TrackRequest;
+import com.alkmanistik.alkify_music_api.service.SecurityService;
 import com.alkmanistik.alkify_music_api.service.TrackService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +24,7 @@ public class TrackController {
 
     private final TrackService trackService;
     private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     @GetMapping()
     public List<TrackDTO> getAllTracks(
@@ -83,43 +86,23 @@ public class TrackController {
     @PostMapping("/like-track/{trackId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void likeTrack(@PathVariable Long trackId) {
-
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        trackService.likeTrack(trackId, user.getId());
+        var user = securityService.getCurrentUser();
+        trackService.likeTrack(trackId, user);
 
     }
 
     @PostMapping("/unlike-track/{trackId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlikeTrack(@PathVariable Long trackId) {
-
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        trackService.unlikeTrack(trackId, user.getId());
+        var user = securityService.getCurrentUser();
+        trackService.unlikeTrack(trackId, user);
     }
 
     @GetMapping("/liked")
     @ResponseStatus(HttpStatus.OK)
     public List<TrackDTO> getLikedTracks() {
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        return trackService.getLikedTracks(user.getId());
+        var user = securityService.getCurrentUser();
+        return trackService.getLikedTracks(user);
     }
 
 }

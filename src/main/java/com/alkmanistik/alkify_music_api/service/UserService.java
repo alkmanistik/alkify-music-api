@@ -60,6 +60,9 @@ public class UserService {
 //        return globalMapper.toUserDTO(savedUser);
 //    }
 
+
+
+
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "users.all", allEntries = true),
@@ -75,7 +78,7 @@ public class UserService {
         if (managedArtists != null) {
             managedArtists.forEach(artistRequest -> {
                 try {
-                    artistService.createArtist(savedUser.getId(), artistRequest, null);
+                    artistService.createArtist(savedUser, artistRequest, null);
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to create artist: " + artistRequest.getArtistName(), e);
                 }
@@ -115,6 +118,8 @@ public class UserService {
     public UserDTO updateUser(Long id, UserRequest userUpdates) {
         User userForUpdate = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+
 
         if (userUpdates.getUsername() != null) {
             userForUpdate.setUsername(userUpdates.getUsername());

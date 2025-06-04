@@ -1,11 +1,9 @@
 package com.alkmanistik.alkify_music_api.controller;
 
 import com.alkmanistik.alkify_music_api.dto.ArtistDTO;
-import com.alkmanistik.alkify_music_api.model.User;
-import com.alkmanistik.alkify_music_api.repository.UserRepository;
 import com.alkmanistik.alkify_music_api.request.ArtistRequest;
 import com.alkmanistik.alkify_music_api.service.ArtistService;
-import jakarta.persistence.EntityNotFoundException;
+import com.alkmanistik.alkify_music_api.service.SecurityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,7 +21,7 @@ import java.util.List;
 public class ArtistController {
 
     private final ArtistService artistService;
-    private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     @GetMapping
     public ResponseEntity<List<ArtistDTO>> getAllArtists() {
@@ -44,19 +42,11 @@ public class ArtistController {
     public ResponseEntity<ArtistDTO> createArtist(
             @RequestPart @Valid ArtistRequest artistRequest,
             @RequestPart(required = false) MultipartFile image) throws IOException {
-
         if (image == null || image.isEmpty()) image = null;
-
-        //TODO: Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
+        var user = securityService.getCurrentUser();
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(artistService.createArtist(user.getId(), artistRequest, image));
+                .body(artistService.createArtist(user, artistRequest, image));
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -82,43 +72,23 @@ public class ArtistController {
     @GetMapping("/subscriptions")
     @ResponseStatus(HttpStatus.OK)
     public List<ArtistDTO> getSubscriptions() {
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        return artistService.getUserSubscriptions(user.getId());
+        var user = securityService.getCurrentUser();
+        return artistService.getUserSubscriptions(user);
     }
 
     @PostMapping("/subscribe-artist/{artistId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void subscribeArtist(@PathVariable Long artistId) {
-
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        artistService.subscribeToArtist(user.getId(), artistId);
+        var user = securityService.getCurrentUser();
+        artistService.subscribeToArtist(user, artistId);
 
     }
 
     @PostMapping("/unsubscribe-artist/{artistId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unsubscribeArtist(@PathVariable Long artistId) {
-
-        // TODO:Аутентификация
-
-        String email = "erik.fattakhov.04@mail.ru";
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        artistService.unsubscribeFromArtist(user.getId(), artistId);
+        var user = securityService.getCurrentUser();
+        artistService.unsubscribeFromArtist(user, artistId);
     }
 
 }

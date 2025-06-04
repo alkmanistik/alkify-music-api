@@ -41,16 +41,11 @@ public class ArtistService {
     @Caching(evict = {
             @CacheEvict(value = "artists.all", allEntries = true),
             @CacheEvict(value = "artist.byId", key = "#result.id", condition = "#result != null"),
-            @CacheEvict(value = "artists.byUserId", key = "#userId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
             @CacheEvict(value = "artist.search", allEntries = true),
-            @CacheEvict(value = "artist.subscriptions", key = "#userId")
+            @CacheEvict(value = "artist.subscriptions", key = "#user.id")
     })
-    public ArtistDTO createArtist(Long userId, ArtistRequest artistRequest, MultipartFile file) throws IOException {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.error("User not found with id: {}", userId);
-                    return new EntityNotFoundException("User not found with id: " + userId);
-                });
+    public ArtistDTO createArtist(User user, ArtistRequest artistRequest, MultipartFile file) throws IOException {
         Artist artist = new Artist();
         artist.setArtistName(artistRequest.getArtistName());
         artist.setDescription(artistRequest.getDescription());
@@ -156,19 +151,16 @@ public class ArtistService {
     @Transactional
     public void deleteAllArtistsByUser(Long userId) {
         artistRepository.findByUserId(userId).forEach(artist ->
-            deleteArtist(artist.getId()));
+                deleteArtist(artist.getId()));
     }
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "artist.subscribers", key = "#artistId"),
-            @CacheEvict(value = "artist.subscriptions", key = "#userId"),
+            @CacheEvict(value = "artist.subscriptions", key = "#user.id"),
             @CacheEvict(value = "artist.byId", key = "#artistId")
     })
-    public void subscribeToArtist(Long userId, Long artistId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
+    public void subscribeToArtist(User user, Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
 
@@ -177,20 +169,17 @@ public class ArtistService {
             artist.getSubscribers().add(user);
             userRepository.save(user);
             artistRepository.save(artist);
-            log.info("User {} subscribed to artist {}", userId, artistId);
+            log.info("User {} subscribed to artist {}", user.getId(), artistId);
         }
     }
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "artist.subscribers", key = "#artistId"),
-            @CacheEvict(value = "artist.subscriptions", key = "#userId"),
+            @CacheEvict(value = "artist.subscriptions", key = "#user.id"),
             @CacheEvict(value = "artist.byId", key = "#artistId")
     })
-    public void unsubscribeFromArtist(Long userId, Long artistId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
+    public void unsubscribeFromArtist(User user, Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
 
@@ -199,14 +188,14 @@ public class ArtistService {
             artist.getSubscribers().remove(user);
             userRepository.save(user);
             artistRepository.save(artist);
-            log.info("User {} unsubscribed from artist {}", userId, artistId);
+            log.info("User {} unsubscribed from artist {}", user.getId(), artistId);
         }
     }
 
-    @Cacheable(value = "artist.subscribed", key = "{#userId, #artistId}",
+    @Cacheable(value = "artist.subscribed", key = "{#user.id, #artistId}",
             unless = "#result == false")
-    public boolean isUserSubscribed(Long userId, Long artistId) {
-        return artistRepository.existsByIdAndSubscribersId(artistId, userId);
+    public boolean isUserSubscribed(User user, Long artistId) {
+        return artistRepository.existsByIdAndSubscribersId(artistId, user.getId());
     }
 
     @Cacheable(value = "artist.subscribers.count", key = "#artistId")
@@ -225,12 +214,9 @@ public class ArtistService {
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "artist.subscriptions", key = "#userId",
+    @Cacheable(value = "artist.subscriptions", key = "#user.id",
             unless = "#result == null")
-    public List<ArtistDTO> getUserSubscriptions(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
+    public List<ArtistDTO> getUserSubscriptions(User user) {
         return user.getSubscribedArtists().stream()
                 .map(globalMapper::toArtistDTO)
                 .collect(Collectors.toList());

@@ -212,38 +212,34 @@ public class TrackService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
-            @CacheEvict(value = "tracks.liked", key = "#userId")
+            @CacheEvict(value = "tracks.liked", key = "#user.id")
     })
-    public void likeTrack(Long trackId, Long userId) {
+    public void likeTrack(Long trackId, User user) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (!track.getLikedUsers().contains(user)) {
             track.getLikedUsers().add(user);
             trackRepository.save(track);
-            log.info("User {} liked track {}", userId, trackId);
+            log.info("User {} liked track {}", user.getId(), trackId);
         }
     }
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
-            @CacheEvict(value = "tracks.liked", key = "#userId")
+            @CacheEvict(value = "tracks.liked", key = "#user.id")
     })
-    public void unlikeTrack(Long trackId, Long userId) {
+    public void unlikeTrack(Long trackId, User user) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (track.getLikedUsers().contains(user)) {
             track.getLikedUsers().remove(user);
             user.getLikedTracks().remove(track);
             trackRepository.save(track);
             userRepository.save(user);
-            log.info("User {} unliked track {}", userId, trackId);
+            log.info("User {} unliked track {}", user.getId(), trackId);
         }
     }
 
@@ -252,9 +248,9 @@ public class TrackService {
         return trackRepository.existsByIdAndLikedUsersId(trackId, userId);
     }
 
-    @Cacheable(value = "tracks.liked", key = "#userId", sync = true)
-    public List<TrackDTO> getLikedTracks(Long userId) {
-        return trackRepository.findByLikedUsersId(userId).stream()
+    @Cacheable(value = "tracks.liked", key = "#user.id", sync = true)
+    public List<TrackDTO> getLikedTracks(User user) {
+        return trackRepository.findByLikedUsersId(user.getId()).stream()
                 .map(globalMapper::toTrackDTO)
                 .collect(Collectors.toList());
     }
