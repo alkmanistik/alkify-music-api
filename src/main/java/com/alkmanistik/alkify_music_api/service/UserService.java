@@ -2,6 +2,7 @@ package com.alkmanistik.alkify_music_api.service;
 
 import com.alkmanistik.alkify_music_api.dto.UserDTO;
 import com.alkmanistik.alkify_music_api.mapper.GlobalMapper;
+import com.alkmanistik.alkify_music_api.model.Role;
 import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.repository.UserRepository;
 import com.alkmanistik.alkify_music_api.request.UserRequest;
@@ -16,7 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,8 +46,8 @@ public class UserService {
                 .username(userRequest.getUsername())
                 .email(userRequest.getEmail())
                 .password(passwordEncoder.encode(userRequest.getPassword()))
+                .roles(new HashSet<>(Set.of(Role.USER)))
                 .build();
-
         User savedUser = userRepository.save(user);
         log.info("Created user with id: {}", savedUser.getId());
 
@@ -61,16 +64,14 @@ public class UserService {
         return globalMapper.toUserDTO(savedUser);
     }
 
-    @Cacheable(value = "user.byEmail", key = "#email",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "user.byEmail", key = "#email", sync = true)
     public UserDTO getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return globalMapper.toUserDTO(user);
     }
 
-    @Cacheable(value = "user.byId", key = "#id",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "user.byId", key = "#id", sync = true)
     public UserDTO getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -129,5 +130,18 @@ public class UserService {
     public User getUserEntityByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public void addAdminRole(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        user.getRoles().add(Role.ADMIN);
+        userRepository.save(user);
+        log.info("Added admin role with id: {}", userId);
+    }
+
+    public UserDTO getYourself(User user) {
+        return globalMapper.toUserDTO(user);
     }
 }
