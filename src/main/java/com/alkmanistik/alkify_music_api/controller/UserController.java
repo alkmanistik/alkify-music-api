@@ -2,6 +2,7 @@ package com.alkmanistik.alkify_music_api.controller;
 
 import com.alkmanistik.alkify_music_api.dto.UserDTO;
 import com.alkmanistik.alkify_music_api.request.UserRequest;
+import com.alkmanistik.alkify_music_api.service.SecurityService;
 import com.alkmanistik.alkify_music_api.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,13 +17,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-
-
-//    @PostMapping
-//    @ResponseStatus(HttpStatus.CREATED)
-//    public UserDTO createUser(@RequestBody @Valid UserRequest user) {
-//        return userService.createUser(user);
-//    }
+    private final SecurityService securityService;
 
     @GetMapping("/email/{email}")
     public UserDTO getUserByEmail(@PathVariable String email) {
@@ -39,12 +34,12 @@ public class UserController {
         return userService.getAllUsers();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/")
     public UserDTO updateUser(
-            @PathVariable Long id,
             @RequestBody @Valid UserRequest userUpdates
     ) {
-        return userService.updateUser(id, userUpdates);
+        var user = securityService.getCurrentUser();
+        return userService.updateUser(user, userUpdates);
     }
 
     @DeleteMapping("/{id}")
