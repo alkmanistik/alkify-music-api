@@ -1,9 +1,12 @@
 package com.alkmanistik.alkify_music_api.service;
 
 import com.alkmanistik.alkify_music_api.dto.AlbumDTO;
+import com.alkmanistik.alkify_music_api.exception.ForbiddenException;
 import com.alkmanistik.alkify_music_api.mapper.GlobalMapper;
 import com.alkmanistik.alkify_music_api.model.Album;
 import com.alkmanistik.alkify_music_api.model.Artist;
+import com.alkmanistik.alkify_music_api.model.Role;
+import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.repository.AlbumRepository;
 import com.alkmanistik.alkify_music_api.repository.ArtistRepository;
 import com.alkmanistik.alkify_music_api.request.AlbumRequest;
@@ -43,12 +46,15 @@ public class AlbumService {
             @CacheEvict(value = "album.byId", key = "#result.id", condition = "#result != null"),
             @CacheEvict(value = "albums.search", allEntries = true)
     })
-    public AlbumDTO createAlbum(Long artistId, AlbumRequest albumRequest, MultipartFile file) throws IOException {
+    public AlbumDTO createAlbum(Long artistId, User user, AlbumRequest albumRequest, MultipartFile file) throws IOException, ForbiddenException {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> {
                     log.error("Artist not found with id: {}", artistId);
                     return new EntityNotFoundException("Artist not found with id: " + artistId);
                 });
+
+        checkArtistOwnership(artist, user);
+
         Album album = new Album();
         album.setTitle(albumRequest.getTitle());
         album.setDescription(albumRequest.getDescription());
@@ -62,9 +68,11 @@ public class AlbumService {
         if (albumRequest.getTracks() != null) {
             albumRequest.getTracks().forEach(trackRequest -> {
                 try {
-                    trackService.createTrack(savedAlbum.getId(), trackRequest, null);
+                    trackService.createTrack(savedAlbum.getId(), user, trackRequest, null);
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to create track: " + trackRequest.getTitle(), e);
+                } catch (ForbiddenException e) {
+                    throw new RuntimeException(e);
                 }
             });
         }
@@ -103,9 +111,11 @@ public class AlbumService {
             @CacheEvict(value = "album.byId", key = "#id"),
             @CacheEvict(value = "albums.search", allEntries = true)
     })
-    public AlbumDTO updateAlbum(Long id, AlbumRequest albumRequest, MultipartFile file) throws IOException {
+    public AlbumDTO updateAlbum(Long id, User user, AlbumRequest albumRequest, MultipartFile file) throws IOException, ForbiddenException {
         Album album = albumRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
+
+        checkArtistOwnership(album.getArtists().getFirst(), user);
 
         if (albumRequest.getTitle() != null) {
             album.setTitle(albumRequest.getTitle());
@@ -132,7 +142,30 @@ public class AlbumService {
             @CacheEvict(value = "album.byId", key = "#album_id"),
             @CacheEvict(value = "albums.search", allEntries = true)
     })
-    public void deleteAlbum(Long album_id) {
+    public void deleteAlbum(Long album_id, User user) throws ForbiddenException {
+        Album album = albumRepository.findById(album_id)
+                .orElseThrow(() -> new EntityNotFoundException("Album not found"));
+
+        checkArtistOwnership(album.getArtists().getFirst(), user);
+
+        trackService.deleteTracksByAlbum(album_id);
+
+        if (album.getImageFilePath() != null) {
+            fileService.deleteFile(imagePath, album.getImageFilePath());
+        }
+
+        albumRepository.delete(album);
+        log.info("Album deleted: {} by userId {}", album_id, user.getId());
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#album_id"),
+            @CacheEvict(value = "albums.search", allEntries = true)
+    })
+    public void delete(Long album_id) {
         Album album = albumRepository.findById(album_id)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
 
@@ -153,9 +186,11 @@ public class AlbumService {
             @CacheEvict(value = "album.byId", key = "#albumId"),
             @CacheEvict(value = "albums.search", allEntries = true)
     })
-    public AlbumDTO addArtistToAlbum(Long albumId, Long artistId) {
+    public AlbumDTO addArtistToAlbum(User user, Long albumId, Long artistId) throws ForbiddenException {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
+
+        checkArtistOwnership(album.getArtists().getFirst(), user);
 
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
@@ -176,15 +211,21 @@ public class AlbumService {
             @CacheEvict(value = "album.byId", key = "#albumId"),
             @CacheEvict(value = "albums.search", allEntries = true)
     })
-    public void removeArtistFromAlbum(Long albumId, Long artistId) {
+    public void removeArtistFromAlbum(User user, Long albumId, Long artistId) throws ForbiddenException {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found"));
+
+        checkArtistOwnership(album.getArtists().getFirst(), user);
 
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
 
         if (!album.getArtists().contains(artist)) {
             throw new IllegalArgumentException("Artist not found in this album");
+        }
+
+        if (album.getArtists().getFirst().getId().equals(artistId)){
+            throw new IllegalArgumentException("Artist who create album can't be remove!");
         }
 
         album.getArtists().remove(artist);
@@ -210,6 +251,14 @@ public class AlbumService {
     })
     public void deleteAlbumsByArtist(Long artistId) {
         albumRepository.findByArtistsId(artistId).forEach(album ->
-                deleteAlbum(album.getId()));
+                delete(album.getId()));
     }
+
+    private void checkArtistOwnership(Artist artist, User user) throws ForbiddenException {
+        if (!artist.getUser().getId().equals(user.getId())
+                && !user.getRoles().contains(Role.ADMIN)) {
+            throw new ForbiddenException("No permission to modify this artist");
+        }
+    }
+
 }

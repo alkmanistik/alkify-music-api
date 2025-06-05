@@ -38,7 +38,7 @@ public class UserController {
         return userService.getAllUsers();
     }
 
-    @GetMapping("/")
+    @GetMapping("/me")
     @PreAuthorize("hasRole('USER')")
     public UserDTO getYourself() {
         var user = securityService.getCurrentUser();
@@ -47,14 +47,14 @@ public class UserController {
 
     @PutMapping("/")
     @PreAuthorize("hasRole('USER')")
-    public UserDTO updateUser(
+    public UserDTO updateYourself(
             @RequestBody @Valid UserRequest userUpdates
     ) {
         var user = securityService.getCurrentUser();
         return userService.updateUser(user, userUpdates);
     }
 
-    @DeleteMapping("/")
+    @DeleteMapping("/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('USER')")
     public void deleteYourself() {

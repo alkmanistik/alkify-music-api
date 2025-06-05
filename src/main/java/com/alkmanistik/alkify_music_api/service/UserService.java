@@ -78,7 +78,7 @@ public class UserService {
         return globalMapper.toUserDTO(user);
     }
 
-    @Cacheable(value = "users.all", unless = "#result == null")
+    @Cacheable(value = "users.all")
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(globalMapper::toUserDTO)

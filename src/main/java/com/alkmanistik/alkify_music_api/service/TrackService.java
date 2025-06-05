@@ -1,11 +1,9 @@
 package com.alkmanistik.alkify_music_api.service;
 
 import com.alkmanistik.alkify_music_api.dto.TrackDTO;
+import com.alkmanistik.alkify_music_api.exception.ForbiddenException;
 import com.alkmanistik.alkify_music_api.mapper.GlobalMapper;
-import com.alkmanistik.alkify_music_api.model.Album;
-import com.alkmanistik.alkify_music_api.model.Artist;
-import com.alkmanistik.alkify_music_api.model.Track;
-import com.alkmanistik.alkify_music_api.model.User;
+import com.alkmanistik.alkify_music_api.model.*;
 import com.alkmanistik.alkify_music_api.repository.AlbumRepository;
 import com.alkmanistik.alkify_music_api.repository.ArtistRepository;
 import com.alkmanistik.alkify_music_api.repository.TrackRepository;
@@ -65,11 +63,14 @@ public class TrackService {
             @CacheEvict(value = "tracks.search", allEntries = true),
             @CacheEvict(value = "tracks.liked", allEntries = true)
     })
-    public TrackDTO createTrack(Long albumId, TrackRequest trackRequest, MultipartFile file) throws IOException {
+    public TrackDTO createTrack(Long albumId, User user, TrackRequest trackRequest, MultipartFile file) throws IOException, ForbiddenException {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new EntityNotFoundException("Album not found with id: " + albumId));
         Artist artist = artistRepository.findById(album.getArtists().getFirst().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found with id: " + album.getArtists().getFirst().getId()));
+
+        checkArtistOwnership(artist, user);
+
         Track track = new Track();
         track.setTitle(trackRequest.getTitle());
         track.setGenre(trackRequest.getGenre());
@@ -93,9 +94,12 @@ public class TrackService {
             @CacheEvict(value = "tracks.search", allEntries = true),
             @CacheEvict(value = "tracks.liked", allEntries = true)
     })
-    public TrackDTO updateTrack(Long trackId, TrackRequest trackRequest, MultipartFile file) throws IOException {
+    public TrackDTO updateTrack(Long trackId, User user, TrackRequest trackRequest, MultipartFile file) throws IOException, ForbiddenException {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found with id: " + trackId));
+
+        checkTrackOwnership(track, user);
+
         if (trackRequest.getTitle() != null) {
             track.setTitle(trackRequest.getTitle());
         }
@@ -169,9 +173,11 @@ public class TrackService {
             @CacheEvict(value = "tracks.all", allEntries = true),
             @CacheEvict(value = "tracks.byAlbum", allEntries = true)
     })
-    public TrackDTO addArtistToTrack(Long trackId, Long artistId) {
+    public TrackDTO addArtistToTrack(User user, Long trackId, Long artistId) throws ForbiddenException {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
+
+        checkTrackOwnership(track, user);
 
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
@@ -191,9 +197,11 @@ public class TrackService {
             @CacheEvict(value = "tracks.all", allEntries = true),
             @CacheEvict(value = "tracks.byAlbum", allEntries = true)
     })
-    public void removeArtistFromTrack(Long trackId, Long artistId) {
+    public void removeArtistFromTrack(User user, Long trackId, Long artistId) throws ForbiddenException {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
+
+        checkTrackOwnership(track, user);
 
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
@@ -202,7 +210,7 @@ public class TrackService {
             throw new IllegalArgumentException("Artist not found in this track");
         }
         if (Objects.equals(track.getArtists().getFirst().getId(), artist.getId())) {
-            throw new IllegalArgumentException("Artist, who created the track, can't be removed");
+            throw new IllegalArgumentException("Artist, who created the track, can't be remove!");
         }
 
         track.getArtists().remove(artist);
@@ -254,4 +262,16 @@ public class TrackService {
                 .map(globalMapper::toTrackDTO)
                 .collect(Collectors.toList());
     }
+
+    private void checkArtistOwnership(Artist artist, User user) throws ForbiddenException {
+        if (!artist.getUser().getId().equals(user.getId())
+                && !user.getRoles().contains(Role.ADMIN)) {
+            throw new ForbiddenException("No permission to modify this artist");
+        }
+    }
+
+    private void checkTrackOwnership(Track track, User user) throws ForbiddenException {
+        checkArtistOwnership(track.getArtists().getFirst(), user);
+    }
+
 }

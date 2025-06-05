@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +28,7 @@ public class FileController {
     @Value("${project.audios}")
     private String audioPath;
 
+    @PreAuthorize("permitAll()")
     @GetMapping("/audios/{audioName}")
     public void getAudio(@PathVariable String audioName, HttpServletResponse response) throws IOException {
         try (InputStream is = fileService.getResourceFile(audioPath, audioName)) {
@@ -38,6 +40,7 @@ public class FileController {
         }
     }
 
+    @PreAuthorize("permitAll()")
     @GetMapping("/images/{imageName}")
     public void getImage(@PathVariable String imageName, HttpServletResponse response) throws IOException {
         try (InputStream is = fileService.getResourceFile(imagePath, imageName)) {
@@ -49,18 +52,21 @@ public class FileController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/audios/{audioName}")
     public ResponseEntity<String> deleteAudio(@PathVariable String audioName) throws IOException {
         fileService.deleteFile(audioPath, audioName);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/images/{imageName}")
     public ResponseEntity<String> deleteImage(@PathVariable String imageName) throws IOException {
         fileService.deleteFile(imagePath, imageName);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/uploadAudio")
     public ResponseEntity<String> uploadAudio(@RequestPart MultipartFile file) throws IOException {
         validateAudioFile(file);
@@ -68,6 +74,7 @@ public class FileController {
         return ResponseEntity.ok("Audio uploaded: " + fileName);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/uploadImage")
     public ResponseEntity<String> uploadImage(@RequestPart MultipartFile file) throws IOException {
         validateImageFile(file);

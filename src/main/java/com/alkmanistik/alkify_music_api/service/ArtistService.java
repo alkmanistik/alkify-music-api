@@ -2,8 +2,10 @@ package com.alkmanistik.alkify_music_api.service;
 
 import com.alkmanistik.alkify_music_api.dto.ArtistDTO;
 import com.alkmanistik.alkify_music_api.dto.UserDTO;
+import com.alkmanistik.alkify_music_api.exception.ForbiddenException;
 import com.alkmanistik.alkify_music_api.mapper.GlobalMapper;
 import com.alkmanistik.alkify_music_api.model.Artist;
+import com.alkmanistik.alkify_music_api.model.Role;
 import com.alkmanistik.alkify_music_api.model.User;
 import com.alkmanistik.alkify_music_api.repository.ArtistRepository;
 import com.alkmanistik.alkify_music_api.repository.UserRepository;
@@ -59,17 +61,18 @@ public class ArtistService {
         if (artistRequest.getAlbums() != null) {
             artistRequest.getAlbums().forEach(albumRequest -> {
                 try {
-                    albumService.createAlbum(savedArtist.getId(), albumRequest, null);
+                    albumService.createAlbum(savedArtist.getId(), user, albumRequest, null);
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to create album: " + albumRequest.getTitle(), e);
+                } catch (ForbiddenException e) {
+                    throw new RuntimeException(e);
                 }
             });
         }
         return globalMapper.toArtistDTO(savedArtist);
     }
 
-    @Cacheable(value = "artists.byUserId", key = "#userId",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "artists.byUserId", key = "#userId", sync = true)
     public List<ArtistDTO> getUserArtists(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new EntityNotFoundException("User not found");
@@ -79,20 +82,43 @@ public class ArtistService {
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "artists.all",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "artists.all", sync = true)
     public List<ArtistDTO> getAllArtists() {
         return artistRepository.findAll().stream()
                 .map(globalMapper::toArtistDTO)
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "artist.byId", key = "#id",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "artist.byId", key = "#id", sync = true)
     public ArtistDTO getArtistById(Long id) {
         return artistRepository.findById(id)
                 .map(globalMapper::toArtistDTO)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#id"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "artist.subscriptions", allEntries = true),
+            @CacheEvict(value = "artist.subscribers", key = "#id")
+    })
+    public void deleteArtist(Long id, User user) throws ForbiddenException {
+        Artist artist = artistRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
+
+        checkArtistOwnership(artist, user);
+
+        if (artist.getImageFilePath() != null) {
+            fileService.deleteFile(imagePath, artist.getImageFilePath());
+        }
+
+        albumService.deleteAlbumsByArtist(artist.getId());
+
+        artistRepository.delete(artist);
+        log.info("Deleted artist with id: {} by userId {}", id, user.getId());
     }
 
     @Transactional
@@ -104,7 +130,7 @@ public class ArtistService {
             @CacheEvict(value = "artist.subscriptions", allEntries = true),
             @CacheEvict(value = "artist.subscribers", key = "#id")
     })
-    public void deleteArtist(Long id) {
+    protected void delete(Long id) {
         Artist artist = artistRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
 
@@ -125,9 +151,12 @@ public class ArtistService {
             @CacheEvict(value = "artists.byUserId", allEntries = true),
             @CacheEvict(value = "artist.search", allEntries = true)
     })
-    public ArtistDTO updateArtistById(Long id, ArtistRequest artistRequest, MultipartFile file) throws IOException {
+    public ArtistDTO updateArtistById(Long id, User user, ArtistRequest artistRequest, MultipartFile file) throws IOException, ForbiddenException {
         var artistForUpdate = artistRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
+
+        checkArtistOwnership(artistForUpdate, user);
+
         if (artistRequest.getArtistName() != null) {
             artistForUpdate.setArtistName(artistRequest.getArtistName());
         }
@@ -140,8 +169,7 @@ public class ArtistService {
         return globalMapper.toArtistDTO(updatedArtist);
     }
 
-    @Cacheable(value = "artist.search", key = "#name",
-            unless = "#result == null", sync = true)
+    @Cacheable(value = "artist.search", key = "#name", sync = true)
     public List<ArtistDTO> searchArtistsByName(String name) {
         return artistRepository.findByArtistNameContainingIgnoreCase(name).stream()
                 .map(globalMapper::toArtistDTO)
@@ -151,7 +179,7 @@ public class ArtistService {
     @Transactional
     public void deleteAllArtistsByUser(Long userId) {
         artistRepository.findByUserId(userId).forEach(artist ->
-                deleteArtist(artist.getId()));
+                delete(artist.getId()));
     }
 
     @Transactional
@@ -192,8 +220,7 @@ public class ArtistService {
         }
     }
 
-    @Cacheable(value = "artist.subscribed", key = "{#user.id, #artistId}",
-            unless = "#result == false")
+    @Cacheable(value = "artist.subscribed", key = "{#user.id, #artistId}")
     public boolean isUserSubscribed(User user, Long artistId) {
         return artistRepository.existsByIdAndSubscribersId(artistId, user.getId());
     }
@@ -203,8 +230,7 @@ public class ArtistService {
         return artistRepository.countSubscribersById(artistId);
     }
 
-    @Cacheable(value = "artist.subscribers", key = "#artistId",
-            unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "artist.subscribers", key = "#artistId")
     public List<UserDTO> getArtistSubscribers(Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new EntityNotFoundException("Artist not found"));
@@ -214,11 +240,18 @@ public class ArtistService {
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "artist.subscriptions", key = "#user.id",
-            unless = "#result == null")
+    @Cacheable(value = "artist.subscriptions", key = "#user.id")
     public List<ArtistDTO> getUserSubscriptions(User user) {
         return user.getSubscribedArtists().stream()
                 .map(globalMapper::toArtistDTO)
                 .collect(Collectors.toList());
     }
+
+    private void checkArtistOwnership(Artist artist, User user) throws ForbiddenException {
+        if (!artist.getUser().getId().equals(user.getId())
+                && !user.getRoles().contains(Role.ADMIN)) {
+            throw new ForbiddenException("No permission to modify this artist");
+        }
+    }
+
 }
