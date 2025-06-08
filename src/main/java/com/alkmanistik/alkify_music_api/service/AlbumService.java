@@ -43,8 +43,17 @@ public class AlbumService {
     @Caching(evict = {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
             @CacheEvict(value = "album.byId", key = "#result.id", condition = "#result != null"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public AlbumDTO createAlbum(Long artistId, User user, AlbumRequest albumRequest, MultipartFile file) throws IOException, ForbiddenException {
         Artist artist = artistRepository.findById(artistId)
@@ -109,7 +118,14 @@ public class AlbumService {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
             @CacheEvict(value = "album.byId", key = "#id"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public AlbumDTO updateAlbum(Long id, User user, AlbumRequest albumRequest, MultipartFile file) throws IOException, ForbiddenException {
         Album album = albumRepository.findById(id)
@@ -140,7 +156,14 @@ public class AlbumService {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
             @CacheEvict(value = "album.byId", key = "#album_id"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void deleteAlbum(Long album_id, User user) throws ForbiddenException {
         Album album = albumRepository.findById(album_id)
@@ -163,7 +186,14 @@ public class AlbumService {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
             @CacheEvict(value = "album.byId", key = "#album_id"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", allEntries = true),
+            @CacheEvict(value = "user.byEmail", allEntries = true)
     })
     public void delete(Long album_id) {
         Album album = albumRepository.findById(album_id)
@@ -184,7 +214,14 @@ public class AlbumService {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
             @CacheEvict(value = "album.byId", key = "#albumId"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public AlbumDTO addArtistToAlbum(User user, Long albumId, Long artistId) throws ForbiddenException {
         Album album = albumRepository.findById(albumId)
@@ -209,7 +246,14 @@ public class AlbumService {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
             @CacheEvict(value = "album.byId", key = "#albumId"),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void removeArtistFromAlbum(User user, Long albumId, Long artistId) throws ForbiddenException {
         Album album = albumRepository.findById(albumId)
@@ -247,7 +291,14 @@ public class AlbumService {
     @Caching(evict = {
             @CacheEvict(value = "albums.all", allEntries = true),
             @CacheEvict(value = "albums.byArtist", allEntries = true),
-            @CacheEvict(value = "albums.search", allEntries = true)
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", allEntries = true),
+            @CacheEvict(value = "user.byEmail", allEntries = true)
     })
     public void deleteAlbumsByArtist(Long artistId) {
         albumRepository.findByArtistsId(artistId).forEach(album ->

@@ -61,7 +61,18 @@ public class TrackService {
             @CacheEvict(value = "track.byId", key = "#result.id", condition = "#result != null"),
             @CacheEvict(value = "tracks.byAlbum", key = "#albumId"),
             @CacheEvict(value = "tracks.search", allEntries = true),
-            @CacheEvict(value = "tracks.liked", allEntries = true)
+            @CacheEvict(value = "tracks.liked", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#albumId"),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public TrackDTO createTrack(Long albumId, User user, TrackRequest trackRequest, MultipartFile file) throws IOException, ForbiddenException {
         Album album = albumRepository.findById(albumId)
@@ -92,7 +103,18 @@ public class TrackService {
             @CacheEvict(value = "track.byId", key = "#trackId"),
             @CacheEvict(value = "tracks.byAlbum", allEntries = true),
             @CacheEvict(value = "tracks.search", allEntries = true),
-            @CacheEvict(value = "tracks.liked", allEntries = true)
+            @CacheEvict(value = "tracks.liked", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#result.album.id"),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public TrackDTO updateTrack(Long trackId, User user, TrackRequest trackRequest, MultipartFile file) throws IOException, ForbiddenException {
         Track track = trackRepository.findById(trackId)
@@ -122,9 +144,53 @@ public class TrackService {
             @CacheEvict(value = "track.byId", key = "#trackId"),
             @CacheEvict(value = "tracks.byAlbum", allEntries = true),
             @CacheEvict(value = "tracks.search", allEntries = true),
-            @CacheEvict(value = "tracks.liked", allEntries = true)
+            @CacheEvict(value = "tracks.liked", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", allEntries = true),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
-    public void deleteTrack(Long trackId) {
+    public void deleteTrack(Long trackId, User user) throws ForbiddenException {
+        Track track = trackRepository.findById(trackId)
+                .orElseThrow(() -> new EntityNotFoundException("Track not found"));
+
+        checkTrackOwnership(track, user);
+
+        if (track.getAudioFilePath() != null) {
+            fileService.deleteFile(audioPath, track.getAudioFilePath());
+        }
+
+        trackRepository.delete(track);
+        log.info("Deleted track with id: {}", trackId);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tracks.all", allEntries = true),
+            @CacheEvict(value = "track.byId", key = "#trackId"),
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true),
+            @CacheEvict(value = "tracks.search", allEntries = true),
+            @CacheEvict(value = "tracks.liked", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", allEntries = true),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", allEntries = true),
+            @CacheEvict(value = "user.byEmail", allEntries = true)
+    })
+    public void delete(Long trackId) {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new EntityNotFoundException("Track not found"));
 
@@ -142,11 +208,22 @@ public class TrackService {
             @CacheEvict(value = "track.byId", allEntries = true),
             @CacheEvict(value = "tracks.byAlbum", key = "#albumId"),
             @CacheEvict(value = "tracks.search", allEntries = true),
-            @CacheEvict(value = "tracks.liked", allEntries = true)
+            @CacheEvict(value = "tracks.liked", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", allEntries = true),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", allEntries = true),
+            @CacheEvict(value = "artists.byUserId", allEntries = true),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", allEntries = true),
+            @CacheEvict(value = "user.byEmail", allEntries = true)
     })
     public void deleteTracksByAlbum(Long albumId) {
         trackRepository.findAllByAlbumId(albumId).forEach(track ->
-                deleteTrack(track.getId())
+                delete(track.getId())
         );
     }
 
@@ -171,7 +248,18 @@ public class TrackService {
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
             @CacheEvict(value = "tracks.all", allEntries = true),
-            @CacheEvict(value = "tracks.byAlbum", allEntries = true)
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#result.album.id"),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public TrackDTO addArtistToTrack(User user, Long trackId, Long artistId) throws ForbiddenException {
         Track track = trackRepository.findById(trackId)
@@ -195,7 +283,18 @@ public class TrackService {
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
             @CacheEvict(value = "tracks.all", allEntries = true),
-            @CacheEvict(value = "tracks.byAlbum", allEntries = true)
+            @CacheEvict(value = "tracks.byAlbum", allEntries = true),
+            @CacheEvict(value = "albums.all", allEntries = true),
+            @CacheEvict(value = "albums.byArtist", allEntries = true),
+            @CacheEvict(value = "album.byId", key = "#result.album.id"),
+            @CacheEvict(value = "albums.search", allEntries = true),
+            @CacheEvict(value = "artists.all", allEntries = true),
+            @CacheEvict(value = "artist.byId", key = "#artistId"),
+            @CacheEvict(value = "artists.byUserId", key = "#user.id"),
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void removeArtistFromTrack(User user, Long trackId, Long artistId) throws ForbiddenException {
         Track track = trackRepository.findById(trackId)
@@ -220,7 +319,10 @@ public class TrackService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
-            @CacheEvict(value = "tracks.liked", key = "#user.id")
+            @CacheEvict(value = "tracks.liked", key = "#user.id"),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void likeTrack(Long trackId, User user) {
         Track track = trackRepository.findById(trackId)
@@ -236,7 +338,10 @@ public class TrackService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "track.byId", key = "#trackId"),
-            @CacheEvict(value = "tracks.liked", key = "#user.id")
+            @CacheEvict(value = "tracks.liked", key = "#user.id"),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void unlikeTrack(Long trackId, User user) {
         Track track = trackRepository.findById(trackId)

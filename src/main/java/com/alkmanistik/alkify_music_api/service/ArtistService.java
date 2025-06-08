@@ -45,7 +45,10 @@ public class ArtistService {
             @CacheEvict(value = "artist.byId", key = "#result.id", condition = "#result != null"),
             @CacheEvict(value = "artists.byUserId", key = "#user.id"),
             @CacheEvict(value = "artist.search", allEntries = true),
-            @CacheEvict(value = "artist.subscriptions", key = "#user.id")
+            @CacheEvict(value = "artist.subscriptions", key = "#user.id"),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public ArtistDTO createArtist(User user, ArtistRequest artistRequest, MultipartFile file) throws IOException {
         Artist artist = new Artist();
@@ -103,7 +106,10 @@ public class ArtistService {
             @CacheEvict(value = "artists.byUserId", key = "#user.id"),
             @CacheEvict(value = "artist.search", allEntries = true),
             @CacheEvict(value = "artist.subscriptions", allEntries = true),
-            @CacheEvict(value = "artist.subscribers", key = "#id")
+            @CacheEvict(value = "artist.subscribers", key = "#id"),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public void deleteArtist(Long id, User user) throws ForbiddenException {
         Artist artist = artistRepository.findById(id)
@@ -118,6 +124,7 @@ public class ArtistService {
         albumService.deleteAlbumsByArtist(artist.getId());
 
         artistRepository.delete(artist);
+
         log.info("Deleted artist with id: {} by userId {}", id, user.getId());
     }
 
@@ -128,7 +135,10 @@ public class ArtistService {
             @CacheEvict(value = "artists.byUserId", allEntries = true),
             @CacheEvict(value = "artist.search", allEntries = true),
             @CacheEvict(value = "artist.subscriptions", allEntries = true),
-            @CacheEvict(value = "artist.subscribers", key = "#id")
+            @CacheEvict(value = "artist.subscribers", key = "#id"),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", allEntries = true),
+            @CacheEvict(value = "user.byEmail", allEntries = true)
     })
     protected void delete(Long id) {
         Artist artist = artistRepository.findById(id)
@@ -149,7 +159,10 @@ public class ArtistService {
             @CacheEvict(value = "artists.all", allEntries = true),
             @CacheEvict(value = "artist.byId", key = "#id"),
             @CacheEvict(value = "artists.byUserId", allEntries = true),
-            @CacheEvict(value = "artist.search", allEntries = true)
+            @CacheEvict(value = "artist.search", allEntries = true),
+            @CacheEvict(value = "users.all", allEntries = true),
+            @CacheEvict(value = "user.byId", key = "#user.id"),
+            @CacheEvict(value = "user.byEmail", key = "#user.email")
     })
     public ArtistDTO updateArtistById(Long id, User user, ArtistRequest artistRequest, MultipartFile file) throws IOException, ForbiddenException {
         var artistForUpdate = artistRepository.findById(id)

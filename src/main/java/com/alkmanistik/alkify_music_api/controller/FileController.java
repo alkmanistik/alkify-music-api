@@ -14,6 +14,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 @RestController
 @RequestMapping("/api/v1/files")
@@ -31,12 +36,18 @@ public class FileController {
     @PreAuthorize("permitAll()")
     @GetMapping("/audios/{audioName}")
     public void getAudio(@PathVariable String audioName, HttpServletResponse response) throws IOException {
-        try (InputStream is = fileService.getResourceFile(audioPath, audioName)) {
+        Path filePath = Path.of(audioPath, audioName);
+
+        try (FileChannel channel = FileChannel.open(filePath, StandardOpenOption.READ);
+             OutputStream os = response.getOutputStream()) {
+
             response.setContentType(MediaTypeFactory
                     .getMediaType(audioName)
                     .orElse(MediaType.APPLICATION_OCTET_STREAM)
                     .toString());
-            StreamUtils.copy(is, response.getOutputStream());
+
+            channel.transferTo(0, channel.size(), Channels.newChannel(os));
+            os.flush();
         }
     }
 

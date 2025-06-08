@@ -20,8 +20,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TrackController {
 
-    private final TrackService trackService;
     private final SecurityService securityService;
+    private final TrackService trackService;
 
     @PreAuthorize("permitAll()")
     @GetMapping()
@@ -39,8 +39,16 @@ public class TrackController {
 
     @PreAuthorize("permitAll()")
     @GetMapping("/{trackId}")
-    private TrackDTO getTrackById(@PathVariable Long trackId) {
+    public TrackDTO getTrackById(@PathVariable Long trackId) {
         return trackService.getById(trackId);
+    }
+
+    @DeleteMapping("/{trackId}")
+    @PreAuthorize("hasRole('USER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTrackById(@PathVariable Long trackId) throws ForbiddenException {
+        var user = securityService.getCurrentUser();
+        trackService.deleteTrack(trackId, user);
     }
 
     @PostMapping("/{albumId}")
@@ -49,9 +57,9 @@ public class TrackController {
     public TrackDTO createTrack(
             @PathVariable Long albumId,
             @RequestPart @Valid TrackRequest request,
-            @RequestPart(required = false) MultipartFile image) throws IOException, ForbiddenException {
+            @RequestPart(required = false) MultipartFile audio) throws IOException, ForbiddenException {
         var user = securityService.getCurrentUser();
-        return trackService.createTrack(albumId, user, request, image);
+        return trackService.createTrack(albumId, user, request, audio);
     }
 
     @PutMapping("/{trackId}")

@@ -42,6 +42,15 @@ public class UserService {
             throw new IllegalArgumentException("Email already exists");
         }
 
+        if (userRequest.getPassword() != null) {
+            if (userRequest.getPassword().length() < 8){
+                throw new IllegalArgumentException("Password must be at least 8 characters");
+            }
+        }
+        else{
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+
         User user = User.builder()
                 .username(userRequest.getUsername())
                 .email(userRequest.getEmail())
@@ -54,7 +63,7 @@ public class UserService {
         if (userRequest.getManagedArtists() != null) {
             userRequest.getManagedArtists().forEach(artistRequest -> {
                 try {
-                    artistService.createArtist(savedUser, artistRequest, null);
+                    artistService.createArtist(user, artistRequest, null);
                 } catch (IOException e) {
                     throw new RuntimeException("Failed to create artist: " + artistRequest.getArtistName(), e);
                 }
@@ -104,8 +113,10 @@ public class UserService {
             userForUpdate.setEmail(userUpdates.getEmail());
         }
 
-        if (userUpdates.getPassword() != null && !userUpdates.getPassword().isBlank()) {
-            userForUpdate.setPassword(passwordEncoder.encode(userUpdates.getPassword()));
+        if (userUpdates.getPassword() != null) {
+            if (userUpdates.getPassword().length() >= 8) {
+                userForUpdate.setPassword(passwordEncoder.encode(userUpdates.getPassword()));
+            }
         }
 
         User updatedUser = userRepository.save(userForUpdate);

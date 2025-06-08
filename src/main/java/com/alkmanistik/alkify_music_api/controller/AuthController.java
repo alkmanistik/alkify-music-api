@@ -19,15 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthenticationService authenticationService;
 
-    @PostMapping("/sign-up")
+    @PostMapping("/register")
     @PermitAll
-    public JwtAuthenticationDTO signUp(@RequestBody @Valid UserRequest request) {
+    public JwtAuthenticationDTO register(@RequestBody @Valid UserRequest request) {
         return authenticationService.signUp(request);
     }
 
-    @PostMapping("/sign-in")
+    @PostMapping("/login")
     @PermitAll
-    public JwtAuthenticationDTO signIn(@RequestBody @Valid AuthRequest request) {
+    public JwtAuthenticationDTO login(@RequestBody @Valid AuthRequest request) {
         return authenticationService.signIn(request);
     }
 }

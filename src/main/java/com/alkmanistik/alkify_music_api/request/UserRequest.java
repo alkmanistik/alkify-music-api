@@ -20,8 +20,6 @@ public class UserRequest {
     @Email
     @NotBlank(message = "Email is mandatory")
     private String email;
-    @Size(min = 8, message = "Min 8 chars for password")
-    @NotBlank(message = "Password is mandatory")
     private String password;
     private List<ArtistRequest> managedArtists;
 

@@ -41,7 +41,7 @@ public class GlobalMapper {
 
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
-        userDTO.setUsername(user.getUsername());
+        userDTO.setUsername(user.getName());
         userDTO.setEmail(user.getEmail());
         userDTO.setManagedArtists(safeMap(user.getManagedArtists(), this::toArtistDTO));
         return userDTO;

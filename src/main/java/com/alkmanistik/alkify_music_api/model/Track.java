@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -15,6 +16,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"likedUsers", "artists", "album"})
 public class Track {
 
     @Id
@@ -38,6 +40,7 @@ public class Track {
     private List<Artist> artists;
 
     @ManyToOne
+
     private Album album;
 
     @CreationTimestamp
